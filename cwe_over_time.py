@@ -8,6 +8,7 @@ import os
 import re
 import csv
 from pathlib import Path
+from collections import Counter
 
 def read_gzipped_csv(filepath):
     """Read a gzipped CSV file into a pandas DataFrame."""
@@ -39,18 +40,10 @@ def main():
     # Read the CWE-1003 file to get the list of CWEs in that view
     cwe_1003_ids = set()
     
-    # First, try to directly read and print the first few lines of the file for debugging
-    with open(cwe_1003_path, 'r', encoding='utf-8') as f:
-        print("First 3 lines of 1003.csv:")
-        for i, line in enumerate(f):
-            if i < 3:
-                print(line.strip())
-    
-    # Now read the file again and extract the CWE IDs
+    # Now read the file and extract the CWE IDs
     with open(cwe_1003_path, 'r', encoding='utf-8') as f:
         csv_reader = csv.reader(f)
         header = next(csv_reader)  # Skip header row
-        print(f"CSV header: {header}")
         
         # Find the column index for CWE-ID
         cwe_id_index = header.index('CWE-ID') if 'CWE-ID' in header else 0
@@ -73,8 +66,6 @@ def main():
         cwe_1003_ids.add('119')
     
     print(f"Found {len(cwe_1003_ids)} CWE IDs in the 1003 view")
-    print("CWE IDs in the 1003 view (sample):", sorted(list(cwe_1003_ids))[:10])
-    print("Is '119' in the CWE 1003 view?", '119' in cwe_1003_ids)
     
     print("Reading CVSS data...")
     # Read the CVSS data
@@ -88,7 +79,6 @@ def main():
     invalid_cves = cvss_df[cvss_df['Year'].isna()]
     if not invalid_cves.empty:
         print(f"Warning: Could not extract year from {len(invalid_cves)} CVE IDs.")
-        print("Sample invalid CVE IDs:", invalid_cves['CVE'].head().tolist())
         # Drop rows with invalid years
         cvss_df = cvss_df.dropna(subset=['Year'])
     
@@ -123,7 +113,11 @@ def main():
         if not cwe_list or cwe_list == ['']:
             return 'No CWE'
         
-        # Check for non-standard CWEs (not "CWE-digits" and not "NVD-CWE-Other")
+        # Check for NVD-CWE-noinfo
+        if 'NVD-CWE-noinfo' in cwe_list:
+            return 'NVD-CWE-noinfo'
+        
+        # Check for other non-standard CWEs (not "CWE-digits" and not "NVD-CWE-Other")
         has_non_standard = False
         for cwe in cwe_list:
             if cwe != 'NVD-CWE-Other' and not is_standard_cwe(cwe):
@@ -131,7 +125,7 @@ def main():
                 break
         
         if has_non_standard:
-            return 'Non-Standard CWE'
+            return 'Other Non-Standard CWE'
         
         # Extract numeric part from each CWE ID
         cwe_numbers = [extract_cwe_number(cwe) for cwe in cwe_list if is_standard_cwe(cwe)]
@@ -148,19 +142,11 @@ def main():
     
     cvss_df['Category'] = cvss_df['CWEsList'].apply(categorize_cwe)
     
-    # Look for non-standard CWEs
-    non_standard_cwe_examples = cvss_df[cvss_df['Category'] == 'Non-Standard CWE']
-    if not non_standard_cwe_examples.empty:
-        print(f"\nFound {len(non_standard_cwe_examples)} CVEs with non-standard CWEs")
-        print("Sample non-standard CWEs:")
-        for _, row in non_standard_cwe_examples.head(5).iterrows():
-            print(f"CVE: {row['CVE']}, CWEs: {row['CWEs']}")
-    
     # Group by Year and Category, and count
     grouped_data = cvss_df.groupby(['Year', 'Category']).size().unstack(fill_value=0)
     
     # Handle missing categories by ensuring all categories are columns
-    all_categories = ['In CWE-1003', 'Not in CWE-1003', 'NVD-CWE-Other', 'Non-Standard CWE', 'No CWE']
+    all_categories = ['In CWE-1003', 'Not in CWE-1003', 'NVD-CWE-Other', 'NVD-CWE-noinfo', 'Other Non-Standard CWE', 'No CWE']
     for category in all_categories:
         if category not in grouped_data.columns:
             grouped_data[category] = 0
@@ -168,19 +154,14 @@ def main():
     # Sort columns for consistent appearance
     grouped_data = grouped_data[all_categories]
     
-    # Print category counts to verify
-    total_by_category = grouped_data.sum()
-    print("\nTotal counts by category:")
-    for category in all_categories:
-        print(f"{category}: {total_by_category[category]}")
-    
     # Define colors for categories
     category_colors = {
-        'In CWE-1003': '#4CAF50',      # Green
-        'Not in CWE-1003': '#FFC107',  # Yellow
-        'NVD-CWE-Other': '#9C27B0',    # Purple
-        'Non-Standard CWE': '#2196F3', # Blue
-        'No CWE': '#F44336'            # Red
+        'In CWE-1003': '#4CAF50',           # Green
+        'Not in CWE-1003': '#FFC107',       # Yellow
+        'NVD-CWE-Other': '#9C27B0',         # Purple
+        'NVD-CWE-noinfo': '#2196F3',        # Blue
+        'Other Non-Standard CWE': '#03A9F4', # Light Blue
+        'No CWE': '#F44336'                 # Red
     }
     
     # Create the stacked area plot (cumulative)
@@ -255,7 +236,7 @@ def main():
     plt.figure(figsize=(14, 8))
     
     # Calculate percentages for each year
-    # FIX: Convert to float64 first to avoid dtype incompatibility warning
+    # Convert to float64 first to avoid dtype incompatibility warning
     percentage_data = grouped_data.astype('float64').copy()
     for year in percentage_data.index:
         year_total = percentage_data.loc[year].sum()
