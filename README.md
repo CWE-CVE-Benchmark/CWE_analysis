@@ -6,27 +6,9 @@ It is licensed under the CC-BY-SA-4.0 license.
 
 ## Tools Overview
 
-### get_nvd_data.sh
+### Get NVD data
 
-Downloads CVE data from the National Vulnerability Database (NVD) and organizes it by year.
-
-**Usage:**
-```
-./get_nvd_data.sh
-```
-
-**Output:**
-- `jsondata/*.json` - Raw JSON files containing CVE data organized by year
-
-### nvd_parser.py
-
-Parses the downloaded JSON files to extract CVE information into a structured CSV format.
-
-**Input:**
-- `jsondata/*.json` - JSON files downloaded by `get_nvd_data.sh`
-
-**Output:**
-- `data_out/CVSSData.csv.gz` - Compressed CSV file containing parsed CVE data with CWE mappings
+Run the https://github.com/CyberSecAI/nvd_cve_data script to download the latest CVE data from NVD.
 
 ### get_1003_view.sh
 
