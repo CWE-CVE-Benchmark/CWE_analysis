@@ -287,20 +287,57 @@ def main():
         for cwe, count in counts.items():
             total_cwe_counts[cwe] += count
     
-    # Get the top N most common CWEs for plotting
-    top_n = 15
-    top_cwes = [cwe for cwe, _ in total_cwe_counts.most_common(top_n)]
+    # Get the top N most common standard CWEs for plotting
+    top_n = 30
     
-    # Filter out special values if needed
-    standard_top_cwes = [cwe for cwe in top_cwes if is_standard_cwe(cwe)]
+    # First, get top standard CWEs (those matching the pattern CWE-digits)
+    standard_cwes = [cwe for cwe in total_cwe_counts if is_standard_cwe(cwe)]
+    top_standard_cwes = [cwe for cwe, _ in sorted(
+        [(cwe, total_cwe_counts[cwe]) for cwe in standard_cwes],
+        key=lambda x: x[1], reverse=True
+    )[:top_n]]
     
-    # Create a plot showing counts of individual CWEs over time with log scale
+    # Create a stacked area chart for standard CWEs (normal scale)
     plt.figure(figsize=(14, 8))
     
-    # For each top CWE, plot its count over time
-    for cwe in top_cwes:
-        cwe_yearly_counts = [cwe_counts_by_year[year].get(cwe, 0) for year in years]
-        plt.plot(years, cwe_yearly_counts, marker='o', label=cwe)
+    # Extract data for each CWE by year
+    cwe_data = []
+    for cwe in top_standard_cwes:
+        cwe_data.append([cwe_counts_by_year[year].get(cwe, 0) for year in years])
+    
+    # Create the stacked area chart
+    plt.stackplot(years, cwe_data, labels=top_standard_cwes, alpha=0.8)
+    
+    # Add labels and title
+    plt.xlabel('Year (from CVE ID)', fontsize=12)
+    plt.ylabel('Number of CVEs', fontsize=12)
+    plt.title(f'Top {top_n} Standard CWEs by Frequency Over Time', fontsize=16)
+    
+    # Add legend outside of the plot
+    plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add grid lines
+    plt.grid(linestyle='--', alpha=0.7)
+    
+    # Set x-axis ticks
+    if len(years) > 10:
+        plt.xticks(years[::2])  # Show every other year
+    else:
+        plt.xticks(years)  # Show every year
+    
+    # Adjust layout to make room for the legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    
+    # Save the plot
+    output_stacked_cwe_path = 'top_standard_cwes_stacked.png'
+    plt.savefig(output_stacked_cwe_path, dpi=300, bbox_inches='tight')
+    print(f"Standard CWEs stacked chart saved to {output_stacked_cwe_path}")
+    
+    # Create a stacked area chart for standard CWEs (log scale)
+    plt.figure(figsize=(14, 8))
+    
+    # Create the stacked area chart
+    plt.stackplot(years, cwe_data, labels=top_standard_cwes, alpha=0.8)
     
     # Set y-axis to log scale
     plt.yscale('log')
@@ -308,12 +345,12 @@ def main():
     # Add labels and title
     plt.xlabel('Year (from CVE ID)', fontsize=12)
     plt.ylabel('Number of CVEs (log scale)', fontsize=12)
-    plt.title(f'Top {top_n} CWEs by Frequency Over Time (Log Scale)', fontsize=16)
+    plt.title(f'Top {top_n} Standard CWEs by Frequency Over Time (Log Scale)', fontsize=16)
     
     # Add legend outside of the plot
     plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
     
-    # Add grid lines
+    # Add grid lines that work with log scale
     plt.grid(True, which="both", ls="-", alpha=0.2)
     
     # Set x-axis ticks
@@ -326,46 +363,59 @@ def main():
     plt.tight_layout(rect=[0, 0, 0.85, 1])
     
     # Save the plot
-    output_cwe_counts_path = 'individual_cwe_counts_log_scale.png'
-    plt.savefig(output_cwe_counts_path, dpi=300, bbox_inches='tight')
-    print(f"Individual CWE counts plot saved to {output_cwe_counts_path}")
+    output_stacked_cwe_log_path = 'top_standard_cwes_stacked_log_scale.png'
+    plt.savefig(output_stacked_cwe_log_path, dpi=300, bbox_inches='tight')
+    print(f"Standard CWEs stacked chart (log scale) saved to {output_stacked_cwe_log_path}")
     
-    # Create another plot with only standard CWEs (excluding special values like NVD-CWE-noinfo)
-    if standard_top_cwes:
-        plt.figure(figsize=(14, 8))
-        
-        # For each standard top CWE, plot its count over time
-        for cwe in standard_top_cwes:
-            cwe_yearly_counts = [cwe_counts_by_year[year].get(cwe, 0) for year in years]
-            plt.plot(years, cwe_yearly_counts, marker='o', label=cwe)
-        
-        # Set y-axis to log scale
-        plt.yscale('log')
-        
-        # Add labels and title
-        plt.xlabel('Year (from CVE ID)', fontsize=12)
-        plt.ylabel('Number of CVEs (log scale)', fontsize=12)
-        plt.title('Top Standard CWEs by Frequency Over Time (Log Scale)', fontsize=16)
-        
-        # Add legend outside of the plot
-        plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
-        
-        # Add grid lines
-        plt.grid(True, which="both", ls="-", alpha=0.2)
-        
-        # Set x-axis ticks
-        if len(years) > 10:
-            plt.xticks(years[::2])  # Show every other year
+    # Create a percentage stacked area chart for standard CWEs
+    plt.figure(figsize=(14, 8))
+    
+    # Calculate percentage data
+    cwe_percentage_data = []
+    for i, year in enumerate(years):
+        year_total = sum(cwe_data[j][i] for j in range(len(cwe_data)))
+        if year_total > 0:
+            cwe_percentage_data.append([
+                (cwe_data[j][i] / year_total) * 100 for j in range(len(cwe_data))
+            ])
         else:
-            plt.xticks(years)  # Show every year
-        
-        # Adjust layout to make room for the legend
-        plt.tight_layout(rect=[0, 0, 0.85, 1])
-        
-        # Save the plot
-        output_std_cwe_counts_path = 'standard_cwe_counts_log_scale.png'
-        plt.savefig(output_std_cwe_counts_path, dpi=300, bbox_inches='tight')
-        print(f"Standard CWE counts plot saved to {output_std_cwe_counts_path}")
+            cwe_percentage_data.append([0] * len(cwe_data))
+    
+    # Transpose the data for stacking
+    cwe_percentage_stacked = []
+    for j in range(len(top_standard_cwes)):
+        cwe_percentage_stacked.append([cwe_percentage_data[i][j] for i in range(len(years))])
+    
+    # Create the percentage stacked area chart
+    plt.stackplot(years, cwe_percentage_stacked, labels=top_standard_cwes, alpha=0.8)
+    
+    # Add labels and title
+    plt.xlabel('Year (from CVE ID)', fontsize=12)
+    plt.ylabel('Percentage of CVEs', fontsize=12)
+    plt.title(f'Percentage Distribution of Top {top_n} Standard CWEs Over Time', fontsize=16)
+    
+    # Add legend outside of the plot
+    plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add grid lines
+    plt.grid(linestyle='--', alpha=0.7)
+    
+    # Set y-axis to percentage range
+    plt.ylim(0, 100)
+    
+    # Set x-axis ticks
+    if len(years) > 10:
+        plt.xticks(years[::2])  # Show every other year
+    else:
+        plt.xticks(years)  # Show every year
+    
+    # Adjust layout to make room for the legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    
+    # Save the plot
+    output_stacked_cwe_percentage_path = 'top_standard_cwes_percentage_stacked.png'
+    plt.savefig(output_stacked_cwe_percentage_path, dpi=300, bbox_inches='tight')
+    print(f"Standard CWEs percentage stacked chart saved to {output_stacked_cwe_percentage_path}")
     
     # Generate and print statistics about the data
     total_cves = len(cvss_df)
@@ -395,13 +445,11 @@ def main():
         print(f"{year}: {cwe_1003_count}/{total} ({percentage:.1f}%)")
     
     # Print top individual CWEs overall
-    print(f"\nTop {top_n} CWEs by frequency:")
-    for i, (cwe, count) in enumerate(total_cwe_counts.most_common(top_n)):
+    print(f"\nTop {top_n} standard CWEs by frequency:")
+    for i, cwe in enumerate(top_standard_cwes):
+        count = total_cwe_counts[cwe]
         percentage = (count / total_cves) * 100
         print(f"{i+1}. {cwe}: {count} ({percentage:.2f}%)")
     
-    # Show the plots
-    plt.show()
-
 if __name__ == "__main__":
     main()

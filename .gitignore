@@ -2,3 +2,5 @@ env
 jsondata
 tmp
 data_in/1003.csv.zip
+nvd_parser.py
+logs
