@@ -214,7 +214,7 @@ def main():
     plt.tight_layout()
     
     # Save the plot
-    output_path = 'cve_cwe_cumulative_distribution.png'
+    output_path = './images/cve_cwe_cumulative_distribution.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Cumulative plot saved to {output_path}")
     
@@ -236,7 +236,7 @@ def main():
     plt.tight_layout()
     
     # Save the bar plot
-    output_bar_path = 'cve_cwe_distribution_bar.png'
+    output_bar_path = './images/cve_cwe_distribution_bar.png'
     plt.savefig(output_bar_path, dpi=300, bbox_inches='tight')
     print(f"Bar plot saved to {output_bar_path}")
     
@@ -274,7 +274,7 @@ def main():
     plt.tight_layout()
     
     # Save the percentage plot
-    output_percentage_path = 'cve_cwe_percentage_distribution.png'
+    output_percentage_path = './images/cve_cwe_percentage_distribution.png'
     plt.savefig(output_percentage_path, dpi=300, bbox_inches='tight')
     print(f"Percentage plot saved to {output_percentage_path}")
     
@@ -329,7 +329,7 @@ def main():
     plt.tight_layout(rect=[0, 0, 0.85, 1])
     
     # Save the plot
-    output_stacked_cwe_path = 'top_standard_cwes_stacked.png'
+    output_stacked_cwe_path = './images/top_standard_cwes_stacked.png'
     plt.savefig(output_stacked_cwe_path, dpi=300, bbox_inches='tight')
     print(f"Standard CWEs stacked chart saved to {output_stacked_cwe_path}")
     
@@ -363,7 +363,7 @@ def main():
     plt.tight_layout(rect=[0, 0, 0.85, 1])
     
     # Save the plot
-    output_stacked_cwe_log_path = 'top_standard_cwes_stacked_log_scale.png'
+    output_stacked_cwe_log_path = './images/top_standard_cwes_stacked_log_scale.png'
     plt.savefig(output_stacked_cwe_log_path, dpi=300, bbox_inches='tight')
     print(f"Standard CWEs stacked chart (log scale) saved to {output_stacked_cwe_log_path}")
     
@@ -413,7 +413,7 @@ def main():
     plt.tight_layout(rect=[0, 0, 0.85, 1])
     
     # Save the plot
-    output_stacked_cwe_percentage_path = 'top_standard_cwes_percentage_stacked.png'
+    output_stacked_cwe_percentage_path = './images/top_standard_cwes_percentage_stacked.png'
     plt.savefig(output_stacked_cwe_percentage_path, dpi=300, bbox_inches='tight')
     print(f"Standard CWEs percentage stacked chart saved to {output_stacked_cwe_percentage_path}")
     

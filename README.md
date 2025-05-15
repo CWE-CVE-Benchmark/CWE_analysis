@@ -1,8 +1,8 @@
-I'll add that information to the README:
-
 # CWE-CVE Analysis Tools
 
 This repository provides a set of tools for analyzing Common Weakness Enumeration (CWE) data in relation to Common Vulnerabilities and Exposures (CVE) records over time.
+
+It is licensed under the CC-BY-SA-4.0 license.
 
 ## Tools Overview
 
