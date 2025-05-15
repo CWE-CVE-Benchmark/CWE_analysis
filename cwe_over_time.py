@@ -8,7 +8,7 @@ import os
 import re
 import csv
 from pathlib import Path
-from collections import Counter
+from collections import Counter, defaultdict
 
 def read_gzipped_csv(filepath):
     """Read a gzipped CSV file into a pandas DataFrame."""
@@ -108,10 +108,17 @@ def main():
             return cwe_id[4:]
         return cwe_id
     
+    # Dictionary to track CWE counts by year
+    cwe_counts_by_year = defaultdict(lambda: defaultdict(int))
+    
     # Categorize CVEs
-    def categorize_cwe(cwe_list):
+    def categorize_cwe(cwe_list, year):
         if not cwe_list or cwe_list == ['']:
             return 'No CWE'
+        
+        # Update CWE counts by year for each CWE in the list
+        for cwe in cwe_list:
+            cwe_counts_by_year[year][cwe] += 1
         
         # Check for NVD-CWE-noinfo
         if 'NVD-CWE-noinfo' in cwe_list:
@@ -140,7 +147,8 @@ def main():
         else:
             return 'Not in CWE-1003'
     
-    cvss_df['Category'] = cvss_df['CWEsList'].apply(categorize_cwe)
+    # Apply categorization while tracking CWE counts
+    cvss_df['Category'] = cvss_df.apply(lambda row: categorize_cwe(row['CWEsList'], row['Year']), axis=1)
     
     # Group by Year and Category, and count
     grouped_data = cvss_df.groupby(['Year', 'Category']).size().unstack(fill_value=0)
@@ -270,6 +278,95 @@ def main():
     plt.savefig(output_percentage_path, dpi=300, bbox_inches='tight')
     print(f"Percentage plot saved to {output_percentage_path}")
     
+    # Process CWE counts by year for plotting
+    print("Processing individual CWE counts...")
+    
+    # Get total counts for each CWE across all years
+    total_cwe_counts = Counter()
+    for year, counts in cwe_counts_by_year.items():
+        for cwe, count in counts.items():
+            total_cwe_counts[cwe] += count
+    
+    # Get the top N most common CWEs for plotting
+    top_n = 15
+    top_cwes = [cwe for cwe, _ in total_cwe_counts.most_common(top_n)]
+    
+    # Filter out special values if needed
+    standard_top_cwes = [cwe for cwe in top_cwes if is_standard_cwe(cwe)]
+    
+    # Create a plot showing counts of individual CWEs over time with log scale
+    plt.figure(figsize=(14, 8))
+    
+    # For each top CWE, plot its count over time
+    for cwe in top_cwes:
+        cwe_yearly_counts = [cwe_counts_by_year[year].get(cwe, 0) for year in years]
+        plt.plot(years, cwe_yearly_counts, marker='o', label=cwe)
+    
+    # Set y-axis to log scale
+    plt.yscale('log')
+    
+    # Add labels and title
+    plt.xlabel('Year (from CVE ID)', fontsize=12)
+    plt.ylabel('Number of CVEs (log scale)', fontsize=12)
+    plt.title(f'Top {top_n} CWEs by Frequency Over Time (Log Scale)', fontsize=16)
+    
+    # Add legend outside of the plot
+    plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add grid lines
+    plt.grid(True, which="both", ls="-", alpha=0.2)
+    
+    # Set x-axis ticks
+    if len(years) > 10:
+        plt.xticks(years[::2])  # Show every other year
+    else:
+        plt.xticks(years)  # Show every year
+    
+    # Adjust layout to make room for the legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    
+    # Save the plot
+    output_cwe_counts_path = 'individual_cwe_counts_log_scale.png'
+    plt.savefig(output_cwe_counts_path, dpi=300, bbox_inches='tight')
+    print(f"Individual CWE counts plot saved to {output_cwe_counts_path}")
+    
+    # Create another plot with only standard CWEs (excluding special values like NVD-CWE-noinfo)
+    if standard_top_cwes:
+        plt.figure(figsize=(14, 8))
+        
+        # For each standard top CWE, plot its count over time
+        for cwe in standard_top_cwes:
+            cwe_yearly_counts = [cwe_counts_by_year[year].get(cwe, 0) for year in years]
+            plt.plot(years, cwe_yearly_counts, marker='o', label=cwe)
+        
+        # Set y-axis to log scale
+        plt.yscale('log')
+        
+        # Add labels and title
+        plt.xlabel('Year (from CVE ID)', fontsize=12)
+        plt.ylabel('Number of CVEs (log scale)', fontsize=12)
+        plt.title('Top Standard CWEs by Frequency Over Time (Log Scale)', fontsize=16)
+        
+        # Add legend outside of the plot
+        plt.legend(title='CWE', bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        # Add grid lines
+        plt.grid(True, which="both", ls="-", alpha=0.2)
+        
+        # Set x-axis ticks
+        if len(years) > 10:
+            plt.xticks(years[::2])  # Show every other year
+        else:
+            plt.xticks(years)  # Show every year
+        
+        # Adjust layout to make room for the legend
+        plt.tight_layout(rect=[0, 0, 0.85, 1])
+        
+        # Save the plot
+        output_std_cwe_counts_path = 'standard_cwe_counts_log_scale.png'
+        plt.savefig(output_std_cwe_counts_path, dpi=300, bbox_inches='tight')
+        print(f"Standard CWE counts plot saved to {output_std_cwe_counts_path}")
+    
     # Generate and print statistics about the data
     total_cves = len(cvss_df)
     category_counts = cvss_df['Category'].value_counts()
@@ -296,6 +393,12 @@ def main():
         cwe_1003_count = year_data['In CWE-1003']
         percentage = (cwe_1003_count / total) * 100 if total > 0 else 0
         print(f"{year}: {cwe_1003_count}/{total} ({percentage:.1f}%)")
+    
+    # Print top individual CWEs overall
+    print(f"\nTop {top_n} CWEs by frequency:")
+    for i, (cwe, count) in enumerate(total_cwe_counts.most_common(top_n)):
+        percentage = (count / total_cves) * 100
+        print(f"{i+1}. {cwe}: {count} ({percentage:.2f}%)")
     
     # Show the plots
     plt.show()
